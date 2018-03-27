@@ -12,41 +12,39 @@ export default class OTSubscriber extends Component {
     this.state = {
       streams: [],
     };
+  
     this.componentEvents = {
       streamDestroyed: Platform.OS === 'android' ? 'session:onStreamDropped' : 'session:streamDestroyed',
       streamCreated: Platform.OS === 'android' ? 'session:onStreamReceived' : 'session:streamCreated',
     };
     this.componentEventsArray = Object.values(this.componentEvents);
   }
+
   componentWillMount() {
     const subscriberEvents = sanitizeSubscriberEvents(this.props.eventHandlers);
     setNativeEvents(subscriberEvents);
     this.setEventListeners();
   }
+
   componentWillUnmount() {
     this.streamCreated.remove();
     this.streamDestroyed.remove();
-    OT.removeJSComponentEvents(this.componentEventsArray);    
+    OT.removeJSComponentEvents(this.componentEventsArray);
   }
+
   setEventListeners() {
     OT.setJSComponentEvents(this.componentEventsArray);
+    const subscriberProperties = sanitizeProperties(this.props.properties);
+
+    this.props.streams.map(streamId => {
+      this.onStreamSubscribe(streamId, subscriberProperties) // subscribe to events that we have already
+    })
+
     this.streamCreated = nativeEvents.addListener(
       this.componentEvents.streamCreated,
-      (stream) => {
-        const subscriberProperties = sanitizeProperties(this.props.properties);
-        OT.subscribeToStream(stream.streamId, subscriberProperties, (error) => {
-          if (error) {
-            handleError(error);
-          } else {
-            const oldStreams = this.state.streams;
-            const streams = [...oldStreams, stream.streamId];
-            this.setState({
-              streams,
-            });
-          }
-        });
-      },
+      stream => this.onStreamSubscribe(stream.streamId, subscriberProperties)
     );
+  
     this.streamDestroyed = nativeEvents.addListener(
       this.componentEvents.streamDestroyed,
       (stream) => {
@@ -65,6 +63,21 @@ export default class OTSubscriber extends Component {
       },
     );
   }
+
+  onStreamSubscribe = (streamId, subscriberProperties) => {
+    OT.subscribeToStream(streamId, subscriberProperties, (error) => {
+      if (error) {
+        handleError(error);
+      } else {
+        const oldStreams = this.state.streams;
+        const streams = [...oldStreams, streamId];
+        this.setState({
+          streams,
+        });
+      }
+    });
+  }
+
   render() {
     const { containerStyle, renderSubscribersContainer } = this.props;
     
