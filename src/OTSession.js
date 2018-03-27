@@ -146,7 +146,10 @@ OTSession.propTypes = {
 };
 
 OTSession.defaultProps = {
-  eventHandlers: {},
+  eventHandlers: {
+    streamCreated: event => {},
+    streamDestroyed: event => {},
+  },
   signal: {},
   style: {
     flex: 1
